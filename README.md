@@ -8,6 +8,8 @@ Built for **NEAR Hackathon 2026** (`https://nearhackathon.com/`).
 - **Public GitHub Repository**: [https://github.com/GGGODLIN/near-ghost-shift](https://github.com/GGGODLIN/near-ghost-shift)
 - **Tracks**: `security` (AI Security & Defense), `swarms` (AI Swarms), `agents` (Agent Economy), `business` (Autonomous Business), `open` (Open Innovation), `privacy` (Privacy & Private AI)
 
+https://github.com/user-attachments/assets/b7fae241-3a73-4ec9-8710-123b5c0832e1
+
 ![GhostShift — The Monotonic Turnstile (45s Film Storyboard)](/docs/assets/stills.png)
 
 ---

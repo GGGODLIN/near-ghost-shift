@@ -8,6 +8,8 @@
 - **公開 GitHub 儲存庫**：[https://github.com/GGGODLIN/near-ghost-shift](https://github.com/GGGODLIN/near-ghost-shift)
 - **參賽賽道（Tracks）**：`security`（AI Security & Defense）、`swarms`（AI Swarms）、`agents`（Agent Economy）、`business`（Autonomous Business）、`open`（Open Innovation）、`privacy`（Privacy & Private AI）
 
+https://github.com/user-attachments/assets/b7fae241-3a73-4ec9-8710-123b5c0832e1
+
 ![GhostShift — The Monotonic Turnstile（45 秒短片分鏡拼板）](/docs/assets/stills.png)
 
 ---
