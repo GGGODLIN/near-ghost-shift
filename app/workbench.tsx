@@ -1000,18 +1000,25 @@ function InvariantResults({ report }: { report: JudgeVerificationReport }): Reac
       </div>
       <ul className="mt-3 divide-y divide-rule-soft border-y border-rule-soft">
         {INVARIANTS.map((invariant) => {
+          // The report carries one suite-level verdict; marking every row BROKEN on failure would claim
+          // per-invariant data the runner never returns.
           const held = pbtSuite.passed && pbtSuite.invariantsVerified.includes(invariant.id);
           return (
             <li key={invariant.id} className="flex items-baseline gap-3 py-2">
               <span className="font-mono text-[12px] font-semibold">{invariant.id}</span>
               <span className="flex-1 text-[13px]">{invariant.name}</span>
-              <span className={`font-mono text-[11px] font-semibold ${held ? "text-go" : "text-signal"}`}>
-                {held ? "HELD" : "BROKEN"}
+              <span className={`font-mono text-[11px] font-semibold ${held ? "text-go" : "text-mute"}`}>
+                {held ? "HELD" : "NOT ISOLATED"}
               </span>
             </li>
           );
         })}
       </ul>
+      {pbtSuite.passed ? null : (
+        <p className="mt-2 text-[12.5px] leading-snug text-signal">
+          The suite failed. The runner reports one combined result, so this panel cannot say which invariant broke.
+        </p>
+      )}
       <p className={`${LABEL} mt-4`}>Reachability witnesses</p>
       <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
         {WITNESSES.map((witness) => (
