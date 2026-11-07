@@ -30,6 +30,7 @@ export interface TimelineStepRecord {
   actor: string;
   actionLabel: string;
   epoch: number;
+  currentEpochAfter: number;
   accepted: boolean;
   rejectionCode: RejectionCode | null;
   jobStatusAfter: string;
@@ -83,7 +84,7 @@ const SCENARIO_CATALOG: readonly SeededScenarioMeta[] = [
     id: "scoped-key-escalation-blocked",
     title: "03. Scoped Function-Call Key Escalation Guard",
     subtitle:
-      "Compromised worker sub-account attempts direct NEAR transfer and unauthorized resume_verify call; blocked by scoped access key",
+      "Compromised worker sub-account attempts unauthorized resume_verify self-approval; blocked by scoped access key",
     tracks: ["security", "swarms", "open"],
     highlightMetric: "ScopedKeyPermissionDenied · 0 Unauthorized Calls",
   },
@@ -122,12 +123,15 @@ function executeActionSteps(
   steps.forEach((step, idx) => {
     const out = applyGhostShiftAction(state, step.action);
     state = out.state;
-    const jobStatusAfter = state.jobs[jobId]?.status ?? "None";
+    const jobAfter = state.jobs[jobId];
+    const jobStatusAfter = jobAfter?.status ?? "None";
+    const currentEpochAfter = jobAfter?.currentEpoch ?? 0;
     const record: TimelineStepRecord = {
       stepNumber: idx + 1,
       actor: step.actor,
       actionLabel: step.label,
       epoch: step.epoch,
+      currentEpochAfter,
       accepted: out.accepted,
       rejectionCode: out.rejectionCode,
       jobStatusAfter,

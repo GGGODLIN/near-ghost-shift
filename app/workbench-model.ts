@@ -145,14 +145,16 @@ export function primaryJob(simulation: SimulationResult): JobRecord | null {
   return jobs[simulation.oneClickQuotePreview.jobId] ?? Object.values(jobs)[0] ?? null;
 }
 
-// Presentation only: the fence drawn per row is the highest epoch the engine has accepted so far.
+// The fence drawn per row comes directly from the engine's currentEpochAfter on each step.
 export function buildFenceTrack(timeline: readonly TimelineStepRecord[]): { rows: FenceRow[]; lanes: number[] } {
-  let fence = 0;
-  const rows = timeline.map((step) => {
-    fence = step.accepted ? Math.max(fence, step.epoch) : fence;
-    return { step, fence };
-  });
-  const maxEpoch = timeline.reduce((max, step) => Math.max(max, step.epoch), 0);
+  const rows = timeline.map((step) => ({
+    step,
+    fence: step.currentEpochAfter,
+  }));
+  const maxEpoch = timeline.reduce(
+    (max, step) => Math.max(max, step.epoch, step.currentEpochAfter),
+    0
+  );
   return { rows, lanes: Array.from({ length: maxEpoch + 1 }, (_, epoch) => epoch) };
 }
 
@@ -258,14 +260,6 @@ function isJudgeReport(value: unknown): value is JudgeVerificationReport {
   );
 }
 
-async function readJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
-
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -278,7 +272,7 @@ export async function requestSimulation(scenarioId: ScenarioId, signal: AbortSig
       body: JSON.stringify({ scenarioId }),
       signal,
     });
-    const body = await readJson(response);
+    const body: unknown = await response.json();
     if (response.ok && isSimulationFor(body, scenarioId)) {
       return { phase: "ready", simulation: body };
     }
@@ -292,7 +286,7 @@ export async function requestSimulation(scenarioId: ScenarioId, signal: AbortSig
 export async function requestVerification(): Promise<FinishedRun> {
   try {
     const response = await fetch("/api/verify", { cache: "no-store" });
-    const body = await readJson(response);
+    const body: unknown = await response.json();
     if (response.ok && isJudgeReport(body)) {
       return { phase: "done", report: body };
     }
