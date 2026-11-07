@@ -1,7 +1,3 @@
-export type OneClickProvenanceMode =
-  | "LIVE_1CLICK_QUOTE"
-  | "FALLBACK_QUOTE_PREVIEW";
-
 export interface OneClickQuoteRequest {
   jobId: string;
   winningEpoch: number;
@@ -18,7 +14,7 @@ export interface OneClickQuotePreview {
   winningEpoch: number;
   winningWorker: string;
   settlementMode: "QUOTE_PREVIEW";
-  provenanceMode: OneClickProvenanceMode;
+  provenanceMode: "LIVE_1CLICK_QUOTE" | "FALLBACK_QUOTE_PREVIEW";
   dry: true;
   swapType: "EXACT_INPUT";
   originAsset: string;
@@ -26,7 +22,7 @@ export interface OneClickQuotePreview {
   amountIn: string;
   estimatedAmountOut: string;
   estimatedTimeSeconds: number;
-   fallbackNote: string | null;
+  fallbackNote: string | null;
 }
 
 export type FetchLike = (

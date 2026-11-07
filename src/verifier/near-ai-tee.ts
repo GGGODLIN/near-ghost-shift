@@ -1,11 +1,3 @@
-export type TeeProvenanceMode = "LIVE_TEE" | "DETERMINISTIC_FIXTURE";
-
-export type TeeRejectionCode =
-  | "InvalidNonceFormat"
-  | "NonceBindingMismatch"
-  | "UntrustedTeeSigner"
-  | "JobBindingMismatch";
-
 export interface TeeAttestationEnvelope {
   model: string;
   nonceHex: string;
@@ -20,13 +12,18 @@ export interface TeeAttestationEnvelope {
   expectedEpoch: number;
   workerId: string;
   expectedWorkerId: string;
-  provenanceMode: TeeProvenanceMode;
+  provenanceMode: "LIVE_TEE" | "DETERMINISTIC_FIXTURE";
 }
 
 export interface TeeVerificationVerdict {
   verified: boolean;
-  rejectionCode: TeeRejectionCode | null;
-  provenanceMode: TeeProvenanceMode;
+  rejectionCode:
+    | "InvalidNonceFormat"
+    | "NonceBindingMismatch"
+    | "UntrustedTeeSigner"
+    | "JobBindingMismatch"
+    | null;
+  provenanceMode: "LIVE_TEE" | "DETERMINISTIC_FIXTURE";
   signingAddress: string;
   nonceHex: string;
   model: string;
