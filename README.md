@@ -2,6 +2,8 @@
 
 Built for **NEAR Hackathon 2026** (`https://nearhackathon.com/`).
 
+- **Live Interactive Workbench**: `https://near-ghost-shift.vercel.app`
+- **Public GitHub Repository**: `https://github.com/GGGODLIN/near-ghost-shift`
 - **Tracks**: `security` (AI Security & Defense), `swarms` (AI Swarms), `agents` (Agent Economy), `business` (Autonomous Business), `open` (Open Innovation)
 
 ---
