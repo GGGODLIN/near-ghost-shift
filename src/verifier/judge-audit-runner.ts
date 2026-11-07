@@ -62,10 +62,11 @@ export async function runJudgeVerificationSuite(options?: {
 }): Promise<JudgeVerificationReport> {
   const startedAt = Date.now();
 
-  const contractPath = path.resolve(
-    import.meta.dirname,
-    "../../contracts/ghost-shift/src/lib.rs"
-  );
+  // Turbopack-bundled route handlers (next dev / next start) see import.meta.dirname as
+  // undefined, which made GET /api/verify throw; Next always runs from the project root.
+  const contractPath = import.meta.dirname
+    ? path.resolve(import.meta.dirname, "../../contracts/ghost-shift/src/lib.rs")
+    : path.resolve(process.cwd(), "contracts/ghost-shift/src/lib.rs");
   const contractSrc = fs.existsSync(contractPath)
     ? fs.readFileSync(contractPath, "utf8")
     : "";
