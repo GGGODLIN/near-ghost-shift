@@ -6,6 +6,7 @@
 
 - **線上互動審計工作台**：[https://near-ghost-shift.vercel.app](https://near-ghost-shift.vercel.app)
 - **公開 GitHub 儲存庫**：[https://github.com/GGGODLIN/near-ghost-shift](https://github.com/GGGODLIN/near-ghost-shift)
+- **X（Twitter）演示貼文**：[https://x.com/GGGODLIN/status/2119075686073979332](https://x.com/GGGODLIN/status/2119075686073979332)
 - **參賽賽道（Tracks）**：`security`（AI Security & Defense）、`swarms`（AI Swarms）、`agents`（Agent Economy）、`business`（Autonomous Business）、`open`（Open Innovation）、`privacy`（Privacy & Private AI）
 
 https://github.com/user-attachments/assets/b7fae241-3a73-4ec9-8710-123b5c0832e1
