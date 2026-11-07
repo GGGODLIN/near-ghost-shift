@@ -62,7 +62,10 @@ export function verifyScopedFunctionCallKey(
     };
   }
 
-  if (attempt.attachedDepositYocto > 0) {
+  if (
+    !Number.isSafeInteger(attempt.attachedDepositYocto) ||
+    attempt.attachedDepositYocto !== 0
+  ) {
     return {
       allowed: false,
       rejectionCode: "ScopedKeyPermissionDenied",

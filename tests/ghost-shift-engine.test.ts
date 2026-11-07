@@ -209,6 +209,30 @@ test("Role 1.3 (Failure: F2): non-integer, zero, or negative bountyAmount/leaseD
   });
   assert.equal(badEpoch.accepted, false);
   assert.equal(badEpoch.rejectionCode, "InvalidInput");
+
+  const badClockNeg = applyGhostShiftAction(claimed.state, {
+    type: "AdvanceClock",
+    deltaMs: -500,
+    deltaBlocks: 1,
+  });
+  assert.equal(badClockNeg.accepted, false);
+  assert.equal(badClockNeg.rejectionCode, "InvalidInput");
+
+  const badClockNaN = applyGhostShiftAction(claimed.state, {
+    type: "AdvanceClock",
+    deltaMs: Number.NaN,
+    deltaBlocks: 1,
+  });
+  assert.equal(badClockNaN.accepted, false);
+  assert.equal(badClockNaN.rejectionCode, "InvalidInput");
+
+  const protoJobId = applyGhostShiftAction(claimed.state, {
+    type: "ClaimLease",
+    jobId: "toString",
+    workerId: "worker-a.ghostshift.testnet",
+  });
+  assert.equal(protoJobId.accepted, false);
+  assert.equal(protoJobId.rejectionCode, "JobNotFound");
 });
 
 test("Role 1.4: Scoped Function-Call Access Key guard permits whitelisted worker methods and blocks Transfer, AddKey, and unauthorized resume_verify", () => {
@@ -267,6 +291,17 @@ test("Role 1.4: Scoped Function-Call Access Key guard permits whitelisted worker
   });
   assert.equal(blockedResume.allowed, false);
   assert.equal(blockedResume.rejectionCode, "ScopedKeyPermissionDenied");
+
+  const blockedNegDeposit = verifyScopedFunctionCallKey(workerKey, {
+    callerSubAccount: "worker-a.ghostshift.testnet",
+    targetReceiverId: "coordinator.ghostshift.testnet",
+    actionKind: "FunctionCall",
+    methodName: "submit_result",
+    attachedDepositYocto: -1,
+    gasCostYocto: 10_000,
+  });
+  assert.equal(blockedNegDeposit.allowed, false);
+  assert.equal(blockedNegDeposit.rejectionCode, "ScopedKeyPermissionDenied");
 });
 
 test("Role 1.5 (Failure: F5): Rust contract contracts/ghost-shift/src/lib.rs and TS engine share identical states, rejection codes, and Yield/Resume hooks", () => {
@@ -641,4 +676,21 @@ test("Role 3: Independent Oracle calibration (P1..P4 trip individually on test-l
   };
   const verdictP4 = evaluateGhostShiftOracle(initial, cleanTrace, mutatedP4);
   assert.equal(verdictP4.p4TerminalFinalityAndYieldLiveness, false);
+
+  // Pinned shrunken split-brain counterexample replay: late epoch=1 submit after epoch=2 settlement
+  const lateZombieOut = applyGhostShiftAction(cleanState, {
+    type: "SubmitResult",
+    jobId: "job-cal",
+    workerId: "worker-a.ghostshift.testnet",
+    epoch: 1,
+    resultId: "stale-zombie-overwrite",
+    yieldId: "yield-cal-1",
+  });
+  assert.equal(lateZombieOut.accepted, false);
+  assert.equal(lateZombieOut.rejectionCode, "TerminalStateImmutable");
+  assert.equal(
+    lateZombieOut.state.jobs["job-cal"]?.winningWorker,
+    "worker-b.ghostshift.testnet"
+  );
+  assert.equal(lateZombieOut.state.totalPaidOut, 80_000);
 });

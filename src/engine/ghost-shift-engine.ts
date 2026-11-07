@@ -165,6 +165,14 @@ export function applyGhostShiftAction(
 
   switch (action.type) {
     case "AdvanceClock": {
+      if (
+        !Number.isSafeInteger(action.deltaMs) ||
+        action.deltaMs < 0 ||
+        !Number.isSafeInteger(action.deltaBlocks) ||
+        action.deltaBlocks < 0
+      ) {
+        return { accepted: false, rejectionCode: "InvalidInput", state: next };
+      }
       next.nowMs += action.deltaMs;
       next.currentBlock += action.deltaBlocks;
       return { accepted: true, rejectionCode: null, state: next };
@@ -181,7 +189,7 @@ export function applyGhostShiftAction(
       ) {
         return { accepted: false, rejectionCode: "InvalidInput", state: next };
       }
-      if (next.jobs[action.jobId]) {
+      if (Object.hasOwn(next.jobs, action.jobId)) {
         return {
           accepted: false,
           rejectionCode: "JobAlreadyExists",
@@ -220,7 +228,9 @@ export function applyGhostShiftAction(
       ) {
         return { accepted: false, rejectionCode: "InvalidInput", state: next };
       }
-      const job = next.jobs[action.jobId];
+      const job = Object.hasOwn(next.jobs, action.jobId)
+        ? next.jobs[action.jobId]
+        : undefined;
       if (!job) {
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
@@ -251,7 +261,9 @@ export function applyGhostShiftAction(
       ) {
         return { accepted: false, rejectionCode: "InvalidInput", state: next };
       }
-      const job = next.jobs[action.jobId];
+      const job = Object.hasOwn(next.jobs, action.jobId)
+        ? next.jobs[action.jobId]
+        : undefined;
       if (!job) {
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
@@ -286,7 +298,9 @@ export function applyGhostShiftAction(
       ) {
         return { accepted: false, rejectionCode: "InvalidInput", state: next };
       }
-      const job = next.jobs[action.jobId];
+      const job = Object.hasOwn(next.jobs, action.jobId)
+        ? next.jobs[action.jobId]
+        : undefined;
       if (!job) {
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
@@ -340,7 +354,9 @@ export function applyGhostShiftAction(
       ) {
         return { accepted: false, rejectionCode: "InvalidInput", state: next };
       }
-      const job = next.jobs[action.jobId];
+      const job = Object.hasOwn(next.jobs, action.jobId)
+        ? next.jobs[action.jobId]
+        : undefined;
       if (!job) {
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
@@ -381,7 +397,9 @@ export function applyGhostShiftAction(
       ) {
         return { accepted: false, rejectionCode: "InvalidInput", state: next };
       }
-      const job = next.jobs[action.jobId];
+      const job = Object.hasOwn(next.jobs, action.jobId)
+        ? next.jobs[action.jobId]
+        : undefined;
       if (!job) {
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
@@ -460,7 +478,9 @@ export function applyGhostShiftAction(
       if (typeof action.jobId !== "string") {
         return { accepted: false, rejectionCode: "InvalidInput", state: next };
       }
-      const job = next.jobs[action.jobId];
+      const job = Object.hasOwn(next.jobs, action.jobId)
+        ? next.jobs[action.jobId]
+        : undefined;
       if (!job) {
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
@@ -500,7 +520,9 @@ export function applyGhostShiftAction(
       ) {
         return { accepted: false, rejectionCode: "InvalidInput", state: next };
       }
-      const job = next.jobs[action.jobId];
+      const job = Object.hasOwn(next.jobs, action.jobId)
+        ? next.jobs[action.jobId]
+        : undefined;
       if (!job) {
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }

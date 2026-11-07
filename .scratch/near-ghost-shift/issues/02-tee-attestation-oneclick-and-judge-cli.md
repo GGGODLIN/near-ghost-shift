@@ -26,4 +26,7 @@
 ## Verification Log
 
 - Ticket `02` YAGNI review (`ticket-yagni-runner.py`, `keep: 14`, `demote: 10`, `kill: 0`): all 10 `demote` items are TypeScript public interface/type declarations (`OneClickQuoteRequest`, `OneClickQuotePreview`, `JudgeVerificationReport`, `TeeAttestationEnvelope`, `TeeVerificationVerdict`, etc.) required by `rules/typescript/coding-style.md` ("Add parameter and return types to exported functions... Extract repeated inline object shapes into named types or interfaces") and `tsc --noEmit` strict typechecking; retained with 0 runtime overhead.
+- Closeout code-review (`typescript-reviewer` + `security-reviewer`):
+  - `Acceptance-miss — When NEAR AI Cloud or 1Click returns HTTP 4xx/5xx, times out, or runs without API credentials, the adapter degrades cleanly → fetchOneClickSettlementQuote lacked AbortSignal.timeout and near-ai-tee.ts lacked resolveTeeAttestationEnvelope live NEAR_AI_API_KEY probe + blank signer/epoch<=0 guards`: fixed in `src/intents/oneclick-quote.ts`, `src/verifier/near-ai-tee.ts`, and `src/verifier/judge-audit-runner.ts` (`witnessesAllPositive`), with regression assertions in `tests/verifier-and-intents.test.ts`.
+
 

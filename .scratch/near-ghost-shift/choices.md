@@ -191,4 +191,94 @@
 
 ### 段尾建議
 
-#8、#9、#10、#18 都是「前端推算後端沒給的資料」（每步 epoch、逐條不變量結果、資產小數位、jobId）。建議回 spec 補 `TimelineStepRecord` 與 `JudgeVerificationReport` 的資料契約，不要在前端繼續推算。
+#8、#9、#10、#18 都是「前端推算後端沒給的資料」（每步 epoch、逐條不變量結果、資產小數位、jobId）。建議回 spec 補 `TimelineStepRecord` 與 `JudgeVerificationReport` 的資料契約，不要在前端繼續推算。（註：#8 已於 `dc4ff69` 改由後端 `TimelineStepRecord.currentEpochAfter` 直接提供。）
+
+---
+
+## Full Implement Run（Tickets 01–03 後端、合約與收尾修補 — commits 0e51a3e..HEAD，2026-11-07）
+
+### 八類掃描
+
+| 類別 | 有／無 | 條目 |
+|---|---|---|
+| 資料形狀與格式 | 有 | #19、#20 |
+| 存放位置與命名 | 無 | 檔案路徑皆已由 Ticket 01–03 明文指定（`contracts/ghost-shift/src/lib.rs`、`src/engine/*`、`src/verifier/*`、`src/intents/*`） |
+| API 契約與錯誤行為 | 有 | #21、#22 |
+| 新增的相依套件 | 有 | #23 |
+| 並行與效能取捨 | 有 | #24 |
+| 範圍解讀 | 有 | #25 |
+| 測試設定改動 | 有 | #26 |
+| 會被照抄的模式 | 有 | #20、#22、#24 |
+
+### #19 `TimelineStepRecord` 新增 `currentEpochAfter` 由引擎直接回報每步封鎖代次
+
+- **何時**：commit `dc4ff69`（`src/scenarios/seeded-scenarios.ts:24`、`src/scenarios/seeded-scenarios.ts:127-137`、`app/workbench-model.ts:149-158`）
+- **決定**：由前段 #8 的 `unsound` 判定觸發：前端原本自己拿「目前為止被接受步驟的最大 `epoch`」推算時間軸封鎖線（Fenced Epoch，即低於此代次的舊 Worker 請求一律遭合約攔截的門檻），只要情境劇本手寫標籤漏填就會畫錯。現在改在後端 `executeActionSteps` 每執行完一步 `applyGhostShiftAction` 後，直接從引擎狀態讀取 `state.jobs[jobId]?.currentEpoch ?? 0` 填入 `currentEpochAfter`，前端直接繪製該欄位。如果沒選這個做法、繼續由前端從標籤推算，未來新增情境時畫面上的封鎖斜線可能與引擎真實的 `currentEpoch` 脫節。
+- **規格缺口**：`spec.md` 與 Ticket `03` 定義了時間軸面板，但沒有規定每步回傳紀錄是否包含執行後的引擎 `currentEpoch`。
+- **影響範圍**：所有消費 `TimelineStepRecord` 的前端時間軸元件與 `/api/simulate` 回應格式。
+- **判定**：sound — 消除前段 #8 的 `unsound` 前端推算，讓視覺封鎖線 100% 綁定引擎真實狀態。
+- **把握度**：高
+
+### #20 1Click 預設退款帳戶改用主網既有帳戶 `intents.near` 與全小寫 EVM 地址
+
+- **何時**：commit `e7a23bf`（`src/intents/oneclick-quote.ts:62-66`）
+- **決定**：在實測呼叫真實 `POST https://1click.chaindefuser.com/v0/quote`（NEAR Intents 的跨鏈報價 API）時觸發：1Click 沒有測試網（Testnet），當 `originAsset` 為 `nep141:wrap.near` 時，傳入不存在的測試網帳號 `coordinator.ghostshift.testnet` 會使 1Click 伺服器回傳 HTTP 500，傳入大小寫混合的 EVM 收款地址則會回傳 `recipient is not valid`。現在將預設 `refundTo` 設為真實存在的 `intents.near`，並將預設 `recipient` 轉為全小寫十六進位字串（`.toLowerCase()`），使 `npm run verify:judge` 能穩定拿到 HTTP 200 真實報價。如果沒選這個做法、維持傳入 `.testnet` 帳號，真實 1Click API 每次都會回 500 而永遠退回離線快照。
+- **規格缺口**：`spec.md` 與 Ticket `02` 要求呼叫 `https://1click.chaindefuser.com/v0/quote`（`dry: true`），但未寫明 1Click 主網端點拒絕 `.testnet` 退款帳號與大寫混合地址。
+- **影響範圍**：`fetchOneClickSettlementQuote` 的預設請求參數以及所有依賴它的情境與 CLI 報告。
+- **判定**：sound — `dry: true` 僅為報價預覽、不產生實際鏈上入金地址或資金移動，使用合法主網帳號格式才能通過 1Click 端點驗證。
+- **把握度**：高
+
+### #21 Rust 合約與 TypeScript 引擎統一 `Open` 狀態接手拒絕碼與 `Promise::transfer` 實際出金
+
+- **何時**：收尾 code-review 修補 pass（`contracts/ghost-shift/src/lib.rs:175, 256-308, 349`、`src/engine/ghost-shift-engine.ts:167-175`）
+- **決定**：由收尾 `typescript-reviewer` 與 `security-reviewer` 發現跨語言行為分歧時觸發：原本 Rust 合約在 `Open` 狀態呼叫 `takeover_lease` 時回傳 `LeaseStillActive`（而 TS 引擎回傳 `JobNotOpen`），且 Rust 合約結算與取消時只更新內部 `u128` 變數而未呼叫 `Promise::new(...).transfer(...)`。現在將 Rust 合約的拒絕碼順序、`yield_id_hex` 與 `yield_deadline_block` 檢查、以及 `Promise::new(...).transfer(...)` 全部與 TS 引擎對齊，同時補回 TS 引擎 `AdvanceClock` 的非負整數檢查與 `Object.hasOwn(next.jobs, ...)`。如果沒選這個做法，評審比對 Rust 合約與 TS 引擎時會發現邊界拒絕碼不一致，且合約若部署上鏈會把質押的 `NEAR` 鎖死在合約帳戶內。
+- **規格缺口**：`spec.md` 要求 Rust 合約與 TS 引擎具備相同狀態轉移規則，但未逐一指定每個前置條件失敗時的優先順序。
+- **影響範圍**：`contracts/ghost-shift/src/lib.rs` 與 `src/engine/ghost-shift-engine.ts` 的錯誤碼契約。
+- **判定**：sound — 直接履行 Ticket `01` F5「跨語言狀態與拒絕碼一致」與 `P3` 資金守恆要求。
+- **把握度**：高
+
+### #22 `resolveTeeAttestationEnvelope` 在有 `NEAR_AI_API_KEY` 時連線 NEAR AI Cloud、無金鑰時自動降級
+
+- **何時**：收尾 code-review 修補 pass（`src/verifier/near-ai-tee.ts:65-110`、`src/verifier/judge-audit-runner.ts:289-294`）
+- **決定**：由收尾審查指出 Ticket `02` 與 `spec.md` 提到 `NEAR_AI_API_KEY` 連線與降級、但原 `near-ai-tee.ts` 僅有離線產生器時觸發。現在新增 `resolveTeeAttestationEnvelope`：當環境變數存在非空 `NEAR_AI_API_KEY` 時，帶著 `AbortSignal.timeout(5_000)` 呼叫 `GET https://cloud-api.near.ai/v1/attestation/report` 並標為 `LIVE_TEE`；當未設定金鑰、逾時或回應錯誤時，不印出任何金鑰片段並自動回傳 `DETERMINISTIC_FIXTURE`。如果沒選這個做法，有設定 `NEAR_AI_API_KEY` 的評審執行 `verify:judge` 時仍永遠只會看到 `DETERMINISTIC_FIXTURE`。
+- **規格缺口**：`spec.md` 寫了連線與離線雙模式，但未規定連線逾時秒數與欄位提取失敗時的細部 fallback 步驟。
+- **影響範圍**：`runJudgeVerificationSuite` 與 `/api/verify` 的 TEE 驗證步驟。
+- **判定**：sound — 補齊規格承諾的雙模式切換，且守住無金鑰環境 100% 可重現與不洩密邊界。
+- **把握度**：高
+
+### #23 釘選 Next.js `16.3.6`、React `19.2.8`、`fast-check` `^4.1.1` 與 `near-sdk` `5.29.0`
+
+- **何時**：commits `0b8ed92`、`0e51a3e`（`package.json:13-26`、`contracts/ghost-shift/Cargo.toml:12`）
+- **決定**：在建立專案基礎設施時觸發：需要同時支援 Node 24 原生 `--experimental-strip-types --test`、Next.js App Router 與 NEAR `Yield & Resume` 合約編譯。現在在 `package.json` 沿用本機快取已驗證相容的 `next@16.3.6`、`react@19.2.8`、`fast-check@^4.1.1`，並在 `Cargo.toml` 釘選 `near-sdk = "5.29.0"`。如果沒選這個做法、改裝其他測試框架（如 Jest/Vitest）或未釘版本的套件，會增加額外設定檔與網路下載時間，且可能與 Node 24 原生型別剝除衝突。
+- **規格缺口**：`spec.md` 指定了 `near-sdk v5.29.x`、`fast-check` 與 `Next.js`，但未釘死次版本號。
+- **影響範圍**：全專案建置、測試與部署環境。
+- **判定**：sound — 與既有黑客松專案（`atlassian-clause-clock`、`vultr-chart-truth`）完全同構，離線快取 4 秒裝完。
+- **把握度**：高
+
+### #24 外部 HTTP 呼叫（1Click 與 NEAR AI Cloud）統一設定 `AbortSignal.timeout(5_000)` 5 秒上限
+
+- **何時**：收尾 code-review 修補 pass（`src/intents/oneclick-quote.ts:76`、`src/verifier/near-ai-tee.ts:84`）
+- **決定**：當外部 API 發生 TCP 連上卻不回傳資料的「半開懸掛（hang）」時觸發：Node.js 內建 `fetch` 預設等待 300 秒才逾時，會直接違反 Ticket `02`「`npm run verify:judge` 在 60 秒內完成」的硬規定。現在對 `fetchOneClickSettlementQuote` 與 `resolveTeeAttestationEnvelope` 統一加上預設 `5_000` ms 的 `AbortSignal.timeout`（測試可注入自訂 `timeoutMs`），超過 5 秒立即中止並切換至離線預覽快照。如果沒選這個做法，一旦評審環境的外部網路卡住，CLI 與首頁 SSR 會卡死 5 分鐘。
+- **規格缺口**：Ticket `02` 要求總時間小於 60 秒且逾時自動降級，但未指定單一外部請求的秒數上限。
+- **影響範圍**：所有經過 `fetchOneClickSettlementQuote` 與 `resolveTeeAttestationEnvelope` 的 CLI 與網頁請求。
+- **判定**：sound — 5 秒足以讓正常回應（實測約 0.6～1.0 秒）通過，又能在外部異常時保住 60 秒總預算。
+- **把握度**：高
+
+### #25 拒絕紀錄不在引擎狀態永久累積，改由情境執行層按次收集
+
+- **何時**：commit `30f5c20`（`src/engine/ghost-shift-engine.ts:28-39`、`src/scenarios/seeded-scenarios.ts:117-140`）
+- **決定**：由 Ticket `01` 的 `ticket-yagni-runner.py` 審查裁決（`kill RejectedAttemptRecord`、`demote recordRejection`）觸發：原本在 `GhostShiftState` 內維護一個只增不減的 `rejectedStaleAttempts` 陣列，但 Ticket `01` 的 `P1..P4` 獨立 Oracle 只驗傳回的 `TransitionOutcome.rejectionCode` 與資金／代次狀態。現在從核心引擎狀態移除該陣列，改在 Ticket `03` 的 `seeded-scenarios.ts` 執行劇本步驟時收集 `rejectedAttempts` 供 UI 顯示。如果沒選這個做法、在核心引擎保留無上限成長的陣列，既違反 Ticket `01` YAGNI 裁決，在長序列模擬時也會持續累積記憶體。
+- **規格缺口**：`spec.md` 第 25 行曾提到 `rejectedStaleAttempts` 紀錄，但 Ticket `01` 的驗收條件與 Oracle 並未讀取該陣列。
+- **影響範圍**：`GhostShiftState` 結構更精簡，UI 仍從 `SimulationResult.rejectedAttempts` 取得完整被拒步驟清單。
+- **判定**：sound — 同時滿足 Ticket `01` YAGNI 裁決與 Ticket `03` 介面呈現需求。
+- **把握度**：高
+
+### #26 `fast-check` PBT 生成器聚焦單一預種任務 `job-1` 搭配 `10..25` 步隨機交錯動作以保住 Reachability Witnesses
+
+- **何時**：commit `0e51a3e`（`tests/ghost-shift-engine.test.ts:449-468`、`src/verifier/judge-audit-runner.ts:145-165`）
+- **決定**：在撰寫 Ticket `01` Role 2 `fast-check` 測試時觸發：若從空的 `jobs: {}` 開始完全盲抽多個 `jobId` 與 `epoch: 1..4`，在 200 次執行內抽中「建立任務 → 領租約 → 送交結果進入 `YieldPending` → 推進滿 200 區塊 → 觸發 `YieldTimeout`」完整五步鏈的機率極低，會導致 `yieldTimeoutRecoveredCount > 0` 見證斷言偶發失敗。現在在每次 `fc.property` 迭代開頭固定預種 `CreateJob("job-1")` 與 `ClaimLease("job-1", "worker-a")`，再接 `10..25` 步隨機動作（總長 `12..27` 步，涵蓋 `epoch: 1..3` 與 `deltaBlocks: 50..250`）。如果沒選這個做法、維持從空狀態盲抽，200 次隨機測試幾乎都在測「找不到任務（`JobNotFound`）」，反而測不到深層的 `YieldTimeout` 與多代接手狀態。
+- **規格缺口**：`spec.md` 寫了 `1..30` 步與 `1..3` 個任務，但未規定如何配重才能在 200 次內穩定觸發全部 4 個 Reachability Witnesses。
+- **影響範圍**：`tests/ghost-shift-engine.test.ts` 與 `src/verifier/judge-audit-runner.ts` 的 PBT 覆蓋深度（實測 200 次內穩定觸發 157 次接手、1,161 次舊代次攔截、7 次 Yield 逾時恢復、2 次完整結算）。
+- **判定**：sound — 符合 `tdd/tests.md` Pre-seed state under guard 與 Reachability Witnesses 的精神。
+- **把握度**：高
+

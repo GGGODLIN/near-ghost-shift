@@ -42,6 +42,22 @@ test("Ticket 02.1: verifyTeeSignatureEnvelope validates 64-hex nonce binding acr
   });
   assert.equal(tamperedEpoch.verified, false);
   assert.equal(tamperedEpoch.rejectionCode, "JobBindingMismatch");
+
+  const blankSigner = verifyTeeSignatureEnvelope({
+    ...validEnv,
+    signingAddress: "   ",
+    recoveredSignerAddress: "   ",
+  });
+  assert.equal(blankSigner.verified, false);
+  assert.equal(blankSigner.rejectionCode, "UntrustedTeeSigner");
+
+  const zeroEpoch = verifyTeeSignatureEnvelope({
+    ...validEnv,
+    epoch: 0,
+    expectedEpoch: 0,
+  });
+  assert.equal(zeroEpoch.verified, false);
+  assert.equal(zeroEpoch.rejectionCode, "JobBindingMismatch");
 });
 
 test("Ticket 02.2 (Failure: F3): fetchOneClickSettlementQuote sends dry: true, swapType: EXACT_INPUT, valid NEP-141 assets, and marks settlementMode QUOTE_PREVIEW", async () => {
@@ -125,6 +141,26 @@ test("Ticket 02.3 (Failure: F4): HTTP 5xx/timeout degrades cleanly to FALLBACK_Q
     false,
     "synthetic secret must be redacted from fallback note"
   );
+
+  // Verify timeout abort signal triggers clean fallback within bounded time
+  const hangingFetcher: FetchLike = async (_url, init) =>
+    new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => {
+        reject(new Error("Request timed out via AbortSignal"));
+      });
+    });
+
+  const timedOutFallback = await fetchOneClickSettlementQuote(
+    {
+      jobId: "job-204",
+      winningEpoch: 2,
+      winningWorker: "worker-b.ghostshift.testnet",
+      amountInUnits: "1000000000000000000000000",
+      timeoutMs: 30,
+    },
+    hangingFetcher
+  );
+  assert.equal(timedOutFallback.provenanceMode, "FALLBACK_QUOTE_PREVIEW");
 });
 
 test("Ticket 02.4: runJudgeVerificationSuite completes under 60s and returns PASS across Rust contract, PBT P1..P4, counterexample replay, TEE, and 1Click quote", async () => {

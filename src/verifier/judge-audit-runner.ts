@@ -16,7 +16,7 @@ import {
   type OneClickQuotePreview,
 } from "../intents/oneclick-quote.ts";
 import {
-  createDeterministicTeeEnvelope,
+  resolveTeeAttestationEnvelope,
   verifyTeeSignatureEnvelope,
   type TeeVerificationVerdict,
 } from "./near-ai-tee.ts";
@@ -284,13 +284,12 @@ export async function runJudgeVerificationSuite(options?: {
     staleWriteBlocked: staleBlocked,
   };
 
-  const teeAttestationCheck = verifyTeeSignatureEnvelope(
-    createDeterministicTeeEnvelope({
-      jobId: "job-split",
-      epoch: 2,
-      workerId: "worker-b.ghostshift.testnet",
-    })
-  );
+  const teeEnvelope = await resolveTeeAttestationEnvelope({
+    jobId: "job-split",
+    epoch: 2,
+    workerId: "worker-b.ghostshift.testnet",
+  });
+  const teeAttestationCheck = verifyTeeSignatureEnvelope(teeEnvelope);
 
   const oneClickQuotePreview = await fetchOneClickSettlementQuote(
     {
@@ -302,9 +301,16 @@ export async function runJudgeVerificationSuite(options?: {
     options?.fetcher
   );
 
+  const witnessesAllPositive =
+    takeoverExecutedCount > 0 &&
+    staleEpochBlockedCount > 0 &&
+    yieldTimeoutRecoveredCount > 0 &&
+    completedSettlementCount > 0;
+
   const allGreen =
     rustPassed &&
     pbtPassed &&
+    witnessesAllPositive &&
     staleBlocked &&
     teeAttestationCheck.verified &&
     oneClickQuotePreview.settlementMode === "QUOTE_PREVIEW";

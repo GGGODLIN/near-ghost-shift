@@ -68,3 +68,17 @@ In multi-agent swarms and autonomous business workflows on NEAR, a coordinator d
 
 - Targets **NEAR Hackathon 2026** Grand Prize (US$55,000) + Tracks: `security` (AI Security & Defense), `swarms` (AI Swarms), `agents` (Agent Economy), `business` (Autonomous Business), and `open` (Open Innovation).
 - Web UI polish and the 45-second `onetake` launch video will be delegated to `Opus 5.5 Max` (`--model 'opus[1m]' --effort max`) Herdr workers per the user's division-of-labor rule.
+- **State & Concurrency Two-Tier Verification Conclusion (`狀態與併發兩層核驗` — Tier `4a` Full PBT + Counterexample Replay)**:
+  - Verified invariants `P1..P4` across 200 randomized 27-step interleaving sequences (`seed: 20261107`) within the bounded model (`1` job, `2..3` workers, `200`-block yield timeout), recording Reachability Witnesses `takeoverExecutedCount = 157`, `staleEpochBlockedCount = 1161`, `yieldTimeoutRecoveredCount = 7`, and `completedSettlementCount = 2` (claim bounded to the tested model, assumptions, and step limit).
+  - Shrunken split-brain counterexample state diagram (replayed against both an unfenced coordinator and `GhostShift`):
+    ```mermaid
+    stateDiagram-v2
+      [*] --> Open: CreateJob(100,000)
+      Open --> Leased_E1: ClaimLease(worker-a, epoch=1)
+      Leased_E1 --> Leased_E2: LeaseExpiry(+5000ms) -> TakeoverLease(worker-b, epoch=2)
+      Leased_E2 --> YieldPending_E2: SubmitResult(worker-b, epoch=2) [promise_yield_create]
+      YieldPending_E2 --> YieldPending_E2: LateSubmit(worker-a, stale epoch=1) -> StaleEpochRejected
+      YieldPending_E2 --> Completed_E2: ResumeVerify(epoch=2, TEE=verified) -> Pay 100,000 once
+      Completed_E2 --> Completed_E2: LateSubmit/Heartbeat(worker-a, epoch=1) -> TerminalStateImmutable
+    ```
+

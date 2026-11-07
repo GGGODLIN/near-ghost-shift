@@ -7,6 +7,7 @@ export interface OneClickQuoteRequest {
   destinationAsset?: string;
   recipientAddress?: string;
   refundToAddress?: string;
+  timeoutMs?: number;
 }
 
 export interface OneClickQuotePreview {
@@ -72,18 +73,33 @@ export async function fetchOneClickSettlementQuote(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(req.timeoutMs ?? 5_000),
     });
 
     if (response.ok) {
       const payload = (await response.json()) as {
         quote?: {
-          amountIn?: string;
-          amountOut?: string;
-          timeEstimate?: number;
+          amountIn?: unknown;
+          amountOut?: unknown;
+          timeEstimate?: unknown;
         };
       };
       const quote = payload?.quote;
-      if (quote && typeof quote.amountOut === "string") {
+      if (
+        quote &&
+        typeof quote.amountOut === "string" &&
+        /^\d+$/.test(quote.amountOut)
+      ) {
+        const validAmountIn =
+          typeof quote.amountIn === "string" && /^\d+$/.test(quote.amountIn)
+            ? quote.amountIn
+            : req.amountInUnits;
+        const validTimeEstimate =
+          typeof quote.timeEstimate === "number" &&
+          Number.isFinite(quote.timeEstimate) &&
+          quote.timeEstimate > 0
+            ? quote.timeEstimate
+            : 15;
         return {
           jobId: req.jobId,
           winningEpoch: req.winningEpoch,
@@ -94,9 +110,9 @@ export async function fetchOneClickSettlementQuote(
           swapType: "EXACT_INPUT",
           originAsset,
           destinationAsset,
-          amountIn: quote.amountIn ?? req.amountInUnits,
+          amountIn: validAmountIn,
           estimatedAmountOut: quote.amountOut,
-          estimatedTimeSeconds: quote.timeEstimate ?? 15,
+          estimatedTimeSeconds: validTimeEstimate,
           fallbackNote: null,
         };
       }

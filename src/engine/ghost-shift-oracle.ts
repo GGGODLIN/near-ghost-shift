@@ -248,6 +248,11 @@ export function evaluateGhostShiftOracle(
   let expectedPaid = 0;
   let expectedRefunded = 0;
 
+  if (Object.keys(currentState.jobs).length !== shadowJobs.size) {
+    p1MonotonicEpochAndSingleHolder = false;
+    failureDetails.push("Extra or missing jobs in currentState.jobs");
+  }
+
   for (const [jobId, sj] of shadowJobs.entries()) {
     expectedFunded += sj.bountyAmount;
     const actualJob = currentState.jobs[jobId];
@@ -257,10 +262,11 @@ export function evaluateGhostShiftOracle(
       continue;
     }
 
-    // P1: Epoch and active holder must match independent shadow state
+    // P1: Epoch, active holder, and lease expiry must match independent shadow state
     if (
       actualJob.currentEpoch !== sj.currentEpoch ||
-      actualJob.activeHolder !== sj.activeHolder
+      actualJob.activeHolder !== sj.activeHolder ||
+      actualJob.leaseExpiresAtMs !== sj.leaseExpiresAtMs
     ) {
       p1MonotonicEpochAndSingleHolder = false;
       failureDetails.push(

@@ -1,7 +1,7 @@
 use near_sdk::store::LookupMap;
 use near_sdk::{
   env, near, require, AccountId, Gas, GasWeight, NearToken, PanicOnDefault,
-  PromiseError,
+  Promise, PromiseError,
 };
 
 const YIELD_REGISTER: u64 = 0;
@@ -171,6 +171,7 @@ impl GhostShiftContract {
       job.status != JobStatus::Completed && job.status != JobStatus::Refunded,
       "TerminalStateImmutable"
     );
+    require!(job.status != JobStatus::Open, "JobNotOpen");
 
     let can_takeover = match job.status {
       JobStatus::Leased => job
@@ -254,8 +255,22 @@ impl GhostShiftContract {
       job.status != JobStatus::Completed && job.status != JobStatus::Refunded,
       "TerminalStateImmutable"
     );
-    require!(job.status == JobStatus::YieldPending, "YieldNotPending");
     require!(job.current_epoch == payload.epoch, "StaleEpochRejected");
+    require!(job.status == JobStatus::YieldPending, "YieldNotPending");
+
+    let yield_hex: String =
+      yield_id_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    require!(
+      job.yield_id_hex.as_deref() == Some(yield_hex.as_str()),
+      "YieldIdMismatch"
+    );
+    require!(
+      job
+        .yield_deadline_block
+        .map(|deadline| env::block_height() < deadline)
+        .unwrap_or(false),
+      "YieldTimeoutExpired"
+    );
 
     let payload_bytes =
       serde_json::to_vec(&payload).expect("Failed to serialize resume payload");
@@ -272,6 +287,7 @@ impl GhostShiftContract {
     expected_epoch: u64,
     #[callback_result] resume_result: Result<ResumeVerifyPayload, PromiseError>,
   ) -> JobStatus {
+    let current_block = env::block_height();
     let job = self.jobs.get_mut(&job_id).expect("JobNotFound");
     if job.status == JobStatus::Completed || job.status == JobStatus::Refunded {
       return job.status;
@@ -284,12 +300,18 @@ impl GhostShiftContract {
       Ok(payload)
         if payload.approved
           && payload.tee_signer_verified
-          && payload.epoch == job.current_epoch =>
+          && payload.job_id == job_id
+          && payload.epoch == job.current_epoch
+          && job
+            .yield_deadline_block
+            .map(|deadline| current_block < deadline)
+            .unwrap_or(false) =>
       {
         let payout = job.bounty_yocto;
+        let winner = job.active_holder.clone().expect("Missing active holder");
         job.status = JobStatus::Completed;
         job.winning_epoch = Some(job.current_epoch);
-        job.winning_worker = job.active_holder.clone();
+        job.winning_worker = Some(winner.clone());
         job.accepted_result_id = job.candidate_result_id.clone();
         job.paid_yocto = payout;
         job.yield_id_hex = None;
@@ -299,6 +321,7 @@ impl GhostShiftContract {
           self.escrowed_locked_yocto.saturating_sub(payout);
         self.total_paid_out_yocto =
           self.total_paid_out_yocto.saturating_add(payout);
+        let _ = Promise::new(winner).transfer(NearToken::from_yoctonear(payout));
         JobStatus::Completed
       }
       _ => {
@@ -339,6 +362,7 @@ impl GhostShiftContract {
     require!(can_cancel, "LeaseStillActive");
 
     let refund = job.bounty_yocto;
+    let client_id = job.client_account_id.clone();
     job.status = JobStatus::Refunded;
     job.active_holder = None;
     job.candidate_result_id = None;
@@ -348,6 +372,7 @@ impl GhostShiftContract {
 
     self.escrowed_locked_yocto = self.escrowed_locked_yocto.saturating_sub(refund);
     self.total_refunded_yocto = self.total_refunded_yocto.saturating_add(refund);
+    let _ = Promise::new(client_id).transfer(NearToken::from_yoctonear(refund));
 
     NearToken::from_yoctonear(refund)
   }

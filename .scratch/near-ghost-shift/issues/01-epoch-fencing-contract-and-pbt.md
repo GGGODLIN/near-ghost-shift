@@ -30,5 +30,10 @@
 
 - Batch testing & execution mode ratified by user (`[user: "1a, 2a, 3b, 4a"]`): `testing_mode=tdd` (`2a`), covering Tickets `01`, `02`, `03`; `execution_mode=1a` (Inline for Tickets `01`–`02`, `Opus 5.5 Max` Herdr worker via `agent-dispatch` for Ticket `03` frontend UI); `best_of_n=false` (`3b`); `state_concurrency_verification=4a` (full Shape 1 `fast-check` PBT + Independent Oracle + shrunken counterexample replay).
 - Ticket `01` YAGNI review (`ticket-yagni-runner.py`, `keep: 26`, `demote: 2`, `kill: 1`): removed `RejectedAttemptRecord`, `recordRejection`, and `isNonNegativeSafeInteger` from `src/engine/ghost-shift-engine.ts`; re-verified 8/8 tests in `tests/ghost-shift-engine.test.ts` and `tsc --noEmit` passing.
+- Closeout code-review (`typescript-reviewer` + `security-reviewer`):
+  - `Acceptance-miss — Rust contract contracts/ghost-shift/src/lib.rs and TypeScript engine define identical job states and rejection codes → takeover_lease on Open returned LeaseStillActive instead of JobNotOpen, resume_verify omitted yield_id_hex / yield_deadline_block checks, and on_verify_settled / cancel_expired_job omitted Promise::new(...).transfer(...)`: fixed in `contracts/ghost-shift/src/lib.rs` and verified with `cargo check`.
+  - `Failure-miss: F5 — AdvanceClock in ghost-shift-engine.ts lacked non-negative safe integer guard while ghost-shift-oracle.ts checked it, and next.jobs used bare property lookup`: fixed in `src/engine/ghost-shift-engine.ts` (`Number.isSafeInteger` + `Object.hasOwn`) and `src/engine/ghost-shift-oracle.ts` (`leaseExpiresAtMs` + job count check), with regression assertions in `tests/ghost-shift-engine.test.ts`.
+  - `Failure-miss: F2 — verifyScopedFunctionCallKey checked attachedDepositYocto > 0 instead of !== 0 || !Number.isSafeInteger`: fixed in `src/engine/access-key-guard.ts` and verified in `tests/ghost-shift-engine.test.ts`.
+
 
 
