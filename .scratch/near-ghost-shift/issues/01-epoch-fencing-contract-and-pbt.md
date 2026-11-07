@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** `ready-for-agent`
+**Status:** `done`
 
 **Needs:** None — a worker can check every item unaided
 
@@ -29,4 +29,6 @@
 ## Verification Log
 
 - Batch testing & execution mode ratified by user (`[user: "1a, 2a, 3b, 4a"]`): `testing_mode=tdd` (`2a`), covering Tickets `01`, `02`, `03`; `execution_mode=1a` (Inline for Tickets `01`–`02`, `Opus 5.5 Max` Herdr worker via `agent-dispatch` for Ticket `03` frontend UI); `best_of_n=false` (`3b`); `state_concurrency_verification=4a` (full Shape 1 `fast-check` PBT + Independent Oracle + shrunken counterexample replay).
+- Ticket `01` YAGNI review (`ticket-yagni-runner.py`, `keep: 26`, `demote: 2`, `kill: 1`): removed `RejectedAttemptRecord`, `recordRejection`, and `isNonNegativeSafeInteger` from `src/engine/ghost-shift-engine.ts`; re-verified 8/8 tests in `tests/ghost-shift-engine.test.ts` and `tsc --noEmit` passing.
+
 

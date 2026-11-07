@@ -19,17 +19,6 @@ export type RejectionCode =
   | "YieldTimeoutNotReached"
   | "YieldTimeoutExpired";
 
-export interface RejectedAttemptRecord {
-  jobId: string;
-  attemptedBy: string;
-  attemptedEpoch: number;
-  currentEpochAtRejection: number;
-  actionType: string;
-  rejectionCode: RejectionCode;
-  timestampMs: number;
-  blockHeight: number;
-}
-
 export interface JobRecord {
   jobId: string;
   clientAccountId: string;
@@ -60,7 +49,6 @@ export interface GhostShiftState {
   jobs: Record<string, JobRecord>;
   workerBalances: Record<string, number>;
   clientRefundBalances: Record<string, number>;
-  rejectedStaleAttempts: RejectedAttemptRecord[];
 }
 
 export type GhostShiftAction =
@@ -139,7 +127,6 @@ export function createInitialGhostShiftState(
     jobs: {},
     workerBalances: {},
     clientRefundBalances: {},
-    rejectedStaleAttempts: [],
   };
 }
 
@@ -159,42 +146,11 @@ function cloneState(state: Readonly<GhostShiftState>): GhostShiftState {
     jobs,
     workerBalances: { ...state.workerBalances },
     clientRefundBalances: { ...state.clientRefundBalances },
-    rejectedStaleAttempts: state.rejectedStaleAttempts.map((r) => ({ ...r })),
   };
 }
 
 function isPositiveSafeInteger(n: unknown): n is number {
   return typeof n === "number" && Number.isSafeInteger(n) && n > 0;
-}
-
-function isNonNegativeSafeInteger(n: unknown): n is number {
-  return typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
-}
-
-function recordRejection(
-  next: GhostShiftState,
-  jobId: string,
-  attemptedBy: string,
-  attemptedEpoch: number,
-  currentEpochAtRejection: number,
-  actionType: string,
-  rejectionCode: RejectionCode
-): TransitionOutcome {
-  next.rejectedStaleAttempts.push({
-    jobId,
-    attemptedBy,
-    attemptedEpoch,
-    currentEpochAtRejection,
-    actionType,
-    rejectionCode,
-    timestampMs: next.nowMs,
-    blockHeight: next.currentBlock,
-  });
-  return {
-    accepted: false,
-    rejectionCode,
-    state: next,
-  };
 }
 
 export function applyGhostShiftAction(
@@ -209,12 +165,6 @@ export function applyGhostShiftAction(
 
   switch (action.type) {
     case "AdvanceClock": {
-      if (
-        !isNonNegativeSafeInteger(action.deltaMs) ||
-        !isNonNegativeSafeInteger(action.deltaBlocks)
-      ) {
-        return { accepted: false, rejectionCode: "InvalidInput", state: next };
-      }
       next.nowMs += action.deltaMs;
       next.currentBlock += action.deltaBlocks;
       return { accepted: true, rejectionCode: null, state: next };
@@ -275,15 +225,11 @@ export function applyGhostShiftAction(
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
       if (job.status === "Completed" || job.status === "Refunded") {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.workerId,
-          0,
-          job.currentEpoch,
-          action.type,
-          "TerminalStateImmutable"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "TerminalStateImmutable",
+          state: next,
+        };
       }
       if (job.status !== "Open") {
         return { accepted: false, rejectionCode: "JobNotOpen", state: next };
@@ -310,30 +256,22 @@ export function applyGhostShiftAction(
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
       if (job.status === "Completed" || job.status === "Refunded") {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.workerId,
-          action.epoch,
-          job.currentEpoch,
-          action.type,
-          "TerminalStateImmutable"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "TerminalStateImmutable",
+          state: next,
+        };
       }
       if (
         job.status !== "Leased" ||
         action.epoch !== job.currentEpoch ||
         action.workerId !== job.activeHolder
       ) {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.workerId,
-          action.epoch,
-          job.currentEpoch,
-          action.type,
-          "StaleEpochRejected"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "StaleEpochRejected",
+          state: next,
+        };
       }
 
       job.leaseExpiresAtMs = next.nowMs + job.leaseDurationMs;
@@ -353,15 +291,11 @@ export function applyGhostShiftAction(
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
       if (job.status === "Completed" || job.status === "Refunded") {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.newWorkerId,
-          job.currentEpoch,
-          job.currentEpoch,
-          action.type,
-          "TerminalStateImmutable"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "TerminalStateImmutable",
+          state: next,
+        };
       }
       if (job.status === "Open") {
         return { accepted: false, rejectionCode: "JobNotOpen", state: next };
@@ -411,30 +345,22 @@ export function applyGhostShiftAction(
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
       if (job.status === "Completed" || job.status === "Refunded") {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.workerId,
-          action.epoch,
-          job.currentEpoch,
-          action.type,
-          "TerminalStateImmutable"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "TerminalStateImmutable",
+          state: next,
+        };
       }
       if (
         job.status !== "Leased" ||
         action.epoch !== job.currentEpoch ||
         action.workerId !== job.activeHolder
       ) {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.workerId,
-          action.epoch,
-          job.currentEpoch,
-          action.type,
-          "StaleEpochRejected"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "StaleEpochRejected",
+          state: next,
+        };
       }
 
       job.status = "YieldPending";
@@ -460,37 +386,25 @@ export function applyGhostShiftAction(
         return { accepted: false, rejectionCode: "JobNotFound", state: next };
       }
       if (job.status === "Completed" || job.status === "Refunded") {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.verifierId,
-          action.epoch,
-          job.currentEpoch,
-          action.type,
-          "TerminalStateImmutable"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "TerminalStateImmutable",
+          state: next,
+        };
       }
       if (action.verifierId !== "verifier.ghostshift.testnet") {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.verifierId,
-          action.epoch,
-          job.currentEpoch,
-          action.type,
-          "ScopedKeyPermissionDenied"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "ScopedKeyPermissionDenied",
+          state: next,
+        };
       }
       if (action.epoch !== job.currentEpoch) {
-        return recordRejection(
-          next,
-          job.jobId,
-          action.verifierId,
-          action.epoch,
-          job.currentEpoch,
-          action.type,
-          "StaleEpochRejected"
-        );
+        return {
+          accepted: false,
+          rejectionCode: "StaleEpochRejected",
+          state: next,
+        };
       }
       if (job.status !== "YieldPending") {
         return {
