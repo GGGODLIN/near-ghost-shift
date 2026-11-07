@@ -49,3 +49,5 @@
 - None required.
 ### Summary
 - Run status: PASS
+- Architecture visual candidate gate: `waived` (user decision: `"1b, 2b, 3a"`, reason: `README.md and spec.md already document the architecture and state-machine transitions`, `feature_base_sha`: `0b8ed922ade00dd1900d717db50eec543c028150`, `head_sha`: `ed76f14be3952119a4738ab8df7d75689b8a7c77`)
+
