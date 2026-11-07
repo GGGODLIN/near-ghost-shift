@@ -1,0 +1,429 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f2f1ec;
+  --color-sheet: #fbfaf6;
+  --color-ink: #121211;
+  --color-graphite: #46443e;
+  --color-mute: #6f6c63;
+  --color-rule: #d2cec2;
+  --color-rule-soft: #e5e2d9;
+  /* Text-grade red/green/amber: each keeps >= 4.5:1 on paper, sheet and its own wash. */
+  --color-signal: #c81e14;
+  --color-signal-wash: #fbe5e2;
+  --color-go: #0d7548;
+  --color-go-wash: #e0efe6;
+  --color-caution: #8a5600;
+  --color-caution-wash: #f5ead0;
+
+  /* System stacks only: next/font/google fetches font files during next build, which would tie the judge build to network access. */
+  --font-sans: "Helvetica Neue", Helvetica, "Nimbus Sans", "Liberation Sans", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-paper);
+    background-image:
+      linear-gradient(to right, rgb(18 18 17 / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(18 18 17 / 0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: var(--color-signal);
+    color: #fff;
+  }
+
+  /* Red instead of ink so the ring stays visible on both the paper body and the ink header. */
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .dot-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+  }
+
+  .dot-list > * + *::before {
+    content: "·";
+    padding-inline: 0.45em;
+    opacity: 0.55;
+  }
+
+  .kv {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+    column-gap: 1rem;
+    row-gap: 0.45rem;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  /* No uppercase here: most terms are camelCase identifiers (activeHolder) that become unreadable in caps. */
+  .kv > dt {
+    padding-top: 0.1em;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-mute);
+  }
+
+  .kv > dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.2em 0.55em;
+    border: 1px solid currentColor;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .badge-go {
+    color: var(--color-go);
+    background-color: var(--color-go-wash);
+  }
+
+  .badge-signal {
+    color: #fff;
+    background-color: var(--color-signal);
+    border-color: var(--color-signal);
+  }
+
+  /* Hatched amber marks anything that is a fixture, fallback or preview rather than live data. */
+  .badge-caution {
+    color: var(--color-caution);
+    background-color: var(--color-caution-wash);
+    background-image: repeating-linear-gradient(135deg, rgb(138 86 0 / 0.14) 0 1px, transparent 1px 5px);
+  }
+
+  .badge-ink {
+    color: var(--color-ink);
+    background-color: transparent;
+  }
+
+  .badge-solid {
+    color: var(--color-paper);
+    background-color: var(--color-ink);
+    border-color: var(--color-ink);
+  }
+
+  .note-caution {
+    border-left: 3px solid var(--color-caution);
+    background-color: var(--color-caution-wash);
+    padding: 0.5rem 0.75rem;
+    color: var(--color-caution);
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .epoch-tag {
+    display: inline-block;
+    border: 1px solid currentColor;
+    padding: 0 0.3em;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  /* Epoch lanes: one column per epoch; rails continue across rows because each lane cell stretches. */
+  .lanes {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1.125rem;
+    align-self: stretch;
+  }
+
+  /* Narrow lanes on phones leave the action column wide enough to keep call signatures on one line. */
+  @media (min-width: 48rem) {
+    .lanes {
+      grid-auto-columns: 1.5rem;
+    }
+  }
+
+  .lane {
+    position: relative;
+    min-height: 100%;
+  }
+
+  .lane::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 50%;
+    width: 1px;
+    translate: -0.5px 0;
+    background: repeating-linear-gradient(to bottom, var(--color-rule) 0 3px, transparent 3px 6px);
+  }
+
+  .lane[data-state="live"]::before {
+    width: 2px;
+    translate: -1px 0;
+    background: var(--color-ink);
+  }
+
+  .lane[data-state="fenced"] {
+    background-image: repeating-linear-gradient(135deg, rgb(200 30 20 / 0.2) 0 1px, transparent 1px 5px);
+  }
+
+  .lane[data-state="fenced"]::before {
+    background: rgb(200 30 20 / 0.45);
+  }
+
+  .lane-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-align: center;
+    color: var(--color-mute);
+  }
+
+  .mark {
+    position: relative;
+    display: inline-block;
+    width: 0.625rem;
+    height: 0.625rem;
+    flex: none;
+  }
+
+  .mark[data-kind="accepted"] {
+    background-color: var(--color-ink);
+  }
+
+  .mark[data-kind="system"] {
+    border: 1.5px solid var(--color-ink);
+    background-color: var(--color-sheet);
+  }
+
+  .mark[data-kind="rejected"] {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .mark[data-kind="rejected"]::before,
+  .mark[data-kind="rejected"]::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2.5px;
+    height: 100%;
+    background-color: var(--color-signal);
+    translate: -50% -50%;
+    rotate: 45deg;
+  }
+
+  .mark[data-kind="rejected"]::after {
+    rotate: -45deg;
+  }
+
+  .mark[data-kind="fenced"] {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 1px solid rgb(200 30 20 / 0.45);
+    background-image: repeating-linear-gradient(135deg, rgb(200 30 20 / 0.35) 0 1px, transparent 1px 4px);
+  }
+
+  .lane > .mark {
+    position: absolute;
+    left: 50%;
+    top: 1.15rem;
+    translate: -50% -50%;
+  }
+
+  /* Technical-drawing corner marks on the main comparator sheet. */
+  .corner-ticks {
+    position: relative;
+  }
+
+  .corner-ticks::before,
+  .corner-ticks::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+  }
+
+  .corner-ticks::before {
+    top: -6px;
+    left: -6px;
+    border-top: 2px solid var(--color-signal);
+    border-left: 2px solid var(--color-signal);
+  }
+
+  .corner-ticks::after {
+    right: -6px;
+    bottom: -6px;
+    border-right: 2px solid var(--color-signal);
+    border-bottom: 2px solid var(--color-signal);
+  }
+
+  .scanbar {
+    position: relative;
+    overflow: hidden;
+    background-color: color-mix(in srgb, currentColor 18%, transparent);
+  }
+
+  .scanbar::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 38%;
+    background-color: currentColor;
+    animation: scan 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+
+  .skeleton {
+    background-color: var(--color-rule-soft);
+    animation: pulse-soft 1.6s ease-in-out infinite;
+  }
+
+  .rise {
+    animation: rise 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+
+  .step-row {
+    animation: rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 60ms + 60ms);
+  }
+
+  .stamp {
+    animation: stamp 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 60ms + 280ms);
+  }
+
+  /* Non-modal inspector: entry via @starting-style, exit via a discrete display transition. */
+  .drawer {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 220ms linear,
+      translate 380ms cubic-bezier(0.22, 1, 0.36, 1),
+      display 380ms;
+    transition-behavior: allow-discrete;
+  }
+
+  .drawer[hidden] {
+    opacity: 0;
+    translate: 2rem 0;
+  }
+}
+
+@starting-style {
+  .drawer {
+    opacity: 0;
+    translate: 2rem 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .step-row {
+    animation: fade-in 160ms linear both;
+  }
+
+  .stamp {
+    animation: none;
+  }
+
+  .skeleton {
+    animation: none;
+  }
+
+  /* Slowed rather than removed so a running request still reads as running. */
+  .scanbar::after {
+    animation-duration: 8s;
+  }
+
+  .drawer,
+  .drawer[hidden] {
+    translate: 0 0;
+  }
+
+  @starting-style {
+    .drawer {
+      translate: 0 0;
+    }
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 0.875rem;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    scale: 1.9;
+  }
+
+  55% {
+    opacity: 1;
+    scale: 0.9;
+  }
+
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes scan {
+  from {
+    translate: -100% 0;
+  }
+
+  to {
+    translate: 265% 0;
+  }
+}
+
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.45;
+  }
+}
