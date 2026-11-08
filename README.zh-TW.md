@@ -9,6 +9,10 @@
 - **X（Twitter）演示貼文**：[https://x.com/GGGODLIN/status/2119075686073979332](https://x.com/GGGODLIN/status/2119075686073979332)
 - **參賽賽道（Tracks）**：`security`（AI Security & Defense）、`swarms`（AI Swarms）、`agents`（Agent Economy）、`business`（Autonomous Business）、`open`（Open Innovation）、`privacy`（Privacy & Private AI）
 
+> **雙案獨立揭露聲明（規則 `Q-015`）**：依 NEAR Hackathon 官方規則 `Q-015`（*"Allowed if projects are independent and disclosed: each README names the other project"*），本參賽者提交之兩個專案在賽道、問題空間與程式碼上 100% 獨立且零重疊：
+> 1. **GhostShift**（本儲存庫）— 單調代次柵欄（Monotonic Epoch Fencing）與 `Yield & Resume` 任務交接審計台（賽道：`security`, `swarms`, `agents`, `business`, `open`, `privacy`）。
+> 2. **[Afterlight](https://github.com/GGGODLIN/near-afterlight)**（[線上指揮艙 Demo](https://near-afterlight.vercel.app)）— 太空站長夜電網調度與 `NEP-171` 動態磨損設備 NFT 策略生存遊戲（賽道：`games`, `nfts`）。
+
 https://github.com/user-attachments/assets/b7fae241-3a73-4ec9-8710-123b5c0832e1
 
 ![GhostShift — The Monotonic Turnstile（45 秒短片分鏡拼板）](/docs/assets/stills.png)
