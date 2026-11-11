@@ -41,7 +41,7 @@ Public scenario clicks use **Live Testnet Read + safe sandbox simulation**: the 
 ## NEAR integration and verification boundaries
 
 1. **NEAR Rust Smart Contract ([`contracts/ghost-shift/src/lib.rs`](/contracts/ghost-shift/src/lib.rs), `near-sdk v5.30.1`) with Monotonic `Epoch` Fencing & `Yield & Resume`**:
-   - Every `claim_lease` sets `current_epoch = 1`, and every `takeover_lease` after `lease_expires_at_ms` increments `current_epoch += 1`.
+   - Every `claim_lease` sets `current_epoch = 1`, and every `takeover_lease` after `lease_expires_at_ms` increments `current_epoch += 1` (following Kleppmann fencing-token semantics: wall-clock `lease_expires_at_ms` opens takeover/cancellation eligibility, while write authority is gated strictly on monotonic `epoch == current_epoch` so an uncontested worker is not aborted by clock skew before a challenger takes over).
    - `submit_result` pauses contract execution for up to 200 blocks via `env::promise_yield_create("on_verify_settled", ...)` while awaiting TEE verification via `env::promise_yield_resume`.
    - Any heartbeat, result submission, or callback carrying `epoch != current_epoch` is deterministically rejected on-chain with `StaleEpochRejected` (or `TerminalStateImmutable` once settled).
 2. **Sub-Accounts & Scoped Function-Call Access Keys ([`src/engine/access-key-guard.ts`](/src/engine/access-key-guard.ts))**:
