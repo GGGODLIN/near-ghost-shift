@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "GhostShift — Epoch-Fenced Handoff Audit Desk",
   description:
-    "Interactive audit workbench showing how GhostShift blocks split-brain zombie agent writes on NEAR with monotonic epoch fencing, Yield & Resume, scoped function-call keys, NEAR AI Cloud TEE attestation and NEAR Intents 1Click quote previews.",
+    "Interactive audit workbench showing how GhostShift blocks split-brain zombie agent writes on NEAR with monotonic epoch fencing, Yield & Resume, scoped function-call keys, signed offline verifier fixtures, live Testnet reads and NEAR Intents 1Click quote previews.",
 };
 
 export const viewport: Viewport = {

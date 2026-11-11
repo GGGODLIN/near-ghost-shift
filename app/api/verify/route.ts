@@ -2,5 +2,5 @@ import { runJudgeVerificationSuite } from "../../../src/verifier/judge-audit-run
 
 export async function GET(): Promise<Response> {
   const report = await runJudgeVerificationSuite();
-  return Response.json(report, { status: 200 });
+  return Response.json(report, { status: 200, headers: { "Cache-Control": "no-store" } });
 }

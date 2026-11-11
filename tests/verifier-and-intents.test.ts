@@ -22,7 +22,7 @@ test("Ticket 02.1: verifyTeeSignatureEnvelope validates 64-hex nonce binding acr
 
   const tamperedSigner = verifyTeeSignatureEnvelope({
     ...validEnv,
-    recoveredSignerAddress: "0x000000000000000000000000000000000000dead",
+    signingAddress: "0x000000000000000000000000000000000000dead",
   });
   assert.equal(tamperedSigner.verified, false);
   assert.equal(tamperedSigner.rejectionCode, "UntrustedTeeSigner");
@@ -46,7 +46,7 @@ test("Ticket 02.1: verifyTeeSignatureEnvelope validates 64-hex nonce binding acr
   const blankSigner = verifyTeeSignatureEnvelope({
     ...validEnv,
     signingAddress: "   ",
-    recoveredSignerAddress: "   ",
+    signatureHex: "0x00",
   });
   assert.equal(blankSigner.verified, false);
   assert.equal(blankSigner.rejectionCode, "UntrustedTeeSigner");
@@ -58,6 +58,15 @@ test("Ticket 02.1: verifyTeeSignatureEnvelope validates 64-hex nonce binding acr
   });
   assert.equal(zeroEpoch.verified, false);
   assert.equal(zeroEpoch.rejectionCode, "JobBindingMismatch");
+});
+
+test("ECDSA rejects one-byte signature/message tampering and false LIVE_TEE provenance", () => {
+  const envelope = createDeterministicTeeEnvelope();
+  const firstByte = Number.parseInt(envelope.signatureHex.slice(2, 4), 16) ^ 1;
+  assert.equal(verifyTeeSignatureEnvelope({ ...envelope, signatureHex: `0x${firstByte.toString(16).padStart(2, "0")}${envelope.signatureHex.slice(4)}` }).verified, false);
+  assert.equal(verifyTeeSignatureEnvelope({ ...envelope, signedMessage: `X${envelope.signedMessage.slice(1)}` }).verified, false);
+  assert.equal(verifyTeeSignatureEnvelope({ ...envelope, provenanceMode: "LIVE_TEE" }).rejectionCode, "UnsupportedLiveAttestation");
+  assert.equal(verifyTeeSignatureEnvelope({ ...envelope, jobId: "different-job", expectedJobId: "different-job" }).verified, false);
 });
 
 test("Ticket 02.2 (Failure: F3): fetchOneClickSettlementQuote sends dry: true, swapType: EXACT_INPUT, valid NEP-141 assets, and marks settlementMode QUOTE_PREVIEW", async () => {
@@ -179,7 +188,7 @@ test("Ticket 02.4: runJudgeVerificationSuite completes under 60s and returns PAS
   const report = await runJudgeVerificationSuite({ fetcher: mockFetcher });
   assert.equal(report.verdict, "PASS");
   assert.equal(report.durationMs < 60_000, true);
-  assert.equal(report.rustContractCheck.passed, true);
+  assert.equal(report.liveTestnetCheck.passed, true);
   assert.equal(report.pbtSuite.passed, true);
   assert.equal(report.pbtSuite.runsExecuted >= 200, true);
   assert.equal(report.counterexampleReplay.naiveUnfencedPayoutCount, 2);

@@ -1,5 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
+import { checkLiveTestnet, type LiveTestnetCheck, type RpcFetcher } from "../near/live-testnet.ts";
 import fc from "fast-check";
 import {
   applyGhostShiftAction,
@@ -36,11 +35,7 @@ export interface CounterexampleComparison {
 export interface JudgeVerificationReport {
   verdict: "PASS" | "FAIL";
   durationMs: number;
-  rustContractCheck: {
-    passed: boolean;
-    contractPath: string;
-    verifiedPrimitives: string[];
-  };
+  liveTestnetCheck: LiveTestnetCheck;
   pbtSuite: {
     passed: boolean;
     runsExecuted: number;
@@ -59,29 +54,10 @@ export interface JudgeVerificationReport {
 
 export async function runJudgeVerificationSuite(options?: {
   fetcher?: FetchLike;
+  rpcFetcher?: RpcFetcher;
 }): Promise<JudgeVerificationReport> {
   const startedAt = Date.now();
-
-  // Turbopack-bundled route handlers (next dev / next start) see import.meta.dirname as
-  // undefined, which made GET /api/verify throw; Next always runs from the project root.
-  const contractPath = import.meta.dirname
-    ? path.resolve(import.meta.dirname, "../../contracts/ghost-shift/src/lib.rs")
-    : path.resolve(process.cwd(), "contracts/ghost-shift/src/lib.rs");
-  const contractSrc = fs.existsSync(contractPath)
-    ? fs.readFileSync(contractPath, "utf8")
-    : "";
-  const verifiedPrimitives = [
-    "#[near(contract_state)]",
-    "promise_yield_create",
-    "promise_yield_resume",
-    "#[private]",
-    "pub fn on_verify_settled",
-    "StaleEpochRejected",
-    "LeaseStillActive",
-    "TerminalStateImmutable",
-    "ScopedKeyPermissionDenied",
-  ].filter((tok) => contractSrc.includes(tok));
-  const rustPassed = verifiedPrimitives.length === 9;
+  const liveTestnetPromise = checkLiveTestnet(options?.rpcFetcher);
 
   // Shape 1 fast-check PBT (200 runs)
   const workers = [
@@ -307,8 +283,9 @@ export async function runJudgeVerificationSuite(options?: {
     yieldTimeoutRecoveredCount > 0 &&
     completedSettlementCount > 0;
 
+  const liveTestnetCheck = await liveTestnetPromise;
   const allGreen =
-    rustPassed &&
+    liveTestnetCheck.passed &&
     pbtPassed &&
     witnessesAllPositive &&
     staleBlocked &&
@@ -318,11 +295,7 @@ export async function runJudgeVerificationSuite(options?: {
   return {
     verdict: allGreen ? "PASS" : "FAIL",
     durationMs: Date.now() - startedAt,
-    rustContractCheck: {
-      passed: rustPassed,
-      contractPath: "contracts/ghost-shift/src/lib.rs",
-      verifiedPrimitives,
-    },
+    liveTestnetCheck,
     pbtSuite: {
       passed: pbtPassed,
       runsExecuted,

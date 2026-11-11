@@ -93,6 +93,41 @@ impl GhostShiftContract {
     }
   }
 
+  pub fn get_config(&self) -> serde_json::Value {
+    serde_json::json!({
+      "verifier_account_id": self.verifier_account_id,
+      "yield_timeout_blocks": self.yield_timeout_blocks,
+      "total_funded_yocto": self.total_funded_yocto.to_string(),
+      "escrowed_locked_yocto": self.escrowed_locked_yocto.to_string(),
+      "total_paid_out_yocto": self.total_paid_out_yocto.to_string(),
+      "total_refunded_yocto": self.total_refunded_yocto.to_string(),
+    })
+  }
+
+  pub fn get_job(&self, job_id: String) -> Option<serde_json::Value> {
+    self.jobs.get(&job_id).map(|job| {
+      // JSON numbers cannot preserve yoctoNEAR amounts in JavaScript clients.
+      serde_json::json!({
+        "job_id": job.job_id,
+        "client_account_id": job.client_account_id,
+        "bounty_yocto": job.bounty_yocto.to_string(),
+        "lease_duration_ms": job.lease_duration_ms,
+        "status": job.status,
+        "current_epoch": job.current_epoch,
+        "active_holder": job.active_holder,
+        "lease_expires_at_ms": job.lease_expires_at_ms,
+        "candidate_result_id": job.candidate_result_id,
+        "yield_id_hex": job.yield_id_hex,
+        "yield_deadline_block": job.yield_deadline_block,
+        "winning_epoch": job.winning_epoch,
+        "winning_worker": job.winning_worker,
+        "accepted_result_id": job.accepted_result_id,
+        "paid_yocto": job.paid_yocto.to_string(),
+        "refunded_yocto": job.refunded_yocto.to_string(),
+      })
+    })
+  }
+
   #[payable]
   pub fn create_job(&mut self, job_id: String, lease_duration_ms: u64) {
     let deposit = env::attached_deposit().as_yoctonear();

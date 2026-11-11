@@ -113,7 +113,7 @@ test("Ticket 03.5: README.md contains numbered do X see Y instructions, provenan
   const content = fs.readFileSync(readmePath, "utf8");
   for (const token of [
     "npm run verify:judge",
-    "DETERMINISTIC_FIXTURE",
+    "DETERMINISTIC_SIGNED_FIXTURE",
     "QUOTE_PREVIEW",
     "security",
     "swarms",

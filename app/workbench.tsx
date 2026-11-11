@@ -12,6 +12,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { TESTNET_DEPLOYMENT } from "../src/near/deployment.ts";
 import type {
   ScenarioId,
   SeededScenarioMeta,
@@ -119,6 +120,15 @@ export function Workbench({ catalog, defaultScenarioId, initialScenario }: Workb
       />
       <main className="mx-auto w-full max-w-[1440px] px-5 pb-20 sm:px-8">
         <Intro />
+        <section className="mt-8 border border-ink p-5" aria-label="Testnet deployment">
+          <p className="font-semibold">Live Testnet Read + safe sandbox simulation</p>
+          <p className="mt-2 text-sm">即時鏈上合約狀態讀取 ＋ 瀏覽器安全沙盒模擬。Run judge check reads live RPC; scenario clicks replay the local engine without signing transactions.</p>
+          <a className="mt-2 block break-all underline" href={TESTNET_DEPLOYMENT.explorerUrl} target="_blank" rel="noreferrer">{TESTNET_DEPLOYMENT.accountId}</a>
+          <ul className="mt-2 text-xs">
+            {TESTNET_DEPLOYMENT.transactions.map((tx) => <li key={tx.txHash}><a className="break-all underline" href={tx.explorerUrl} target="_blank" rel="noreferrer">{tx.label}: {tx.txHash}</a></li>)}
+          </ul>
+          <p className="mt-2 text-sm" aria-live="polite">{judge.run.phase === "done" ? `${judge.run.report.liveTestnetCheck.provenanceMode} · ${judge.run.report.liveTestnetCheck.passed ? "verified" : "failed"} · block ${judge.run.report.liveTestnetCheck.blockHeight ?? "unavailable"}` : "Live RPC state has not been checked in this page yet."}</p>
+        </section>
         <ScenarioSwitcher
           catalog={catalog}
           selectedId={selectedScenarioId(view, defaultScenarioId)}
@@ -820,9 +830,9 @@ function TeeCard({ simulation }: { simulation: SimulationResult }): ReactElement
   return (
     <TelemetryCard
       order={2}
-      kicker="NEAR AI Cloud"
-      title="TEE attestation"
-      footer="Intel TDX report_data + NVIDIA NRAS eat_nonce must carry the same nonce; the signer must match signing_address; the verdict is bound to (jobId, epoch, workerId)."
+      kicker="Offline cryptographic verification"
+      title="Signed fixture"
+      footer="Ethereum personal_sign recovery checks the pinned offline signer and lease binding. Matching nonce fields do not authenticate Intel TDX or NVIDIA NRAS hardware."
     >
       <p className="flex flex-wrap gap-2">
         <ProvenanceBadge mode={tee.provenanceMode} />
@@ -840,12 +850,12 @@ function TeeCard({ simulation }: { simulation: SimulationResult }): ReactElement
         <dt>Nonce binding</dt>
         <dd className="text-[12.5px]">
           {tee.verified
-            ? "Same nonce in TDX report_data and NRAS eat_nonce"
+            ? "Offline nonce fields match; hardware evidence is not validated"
             : "Binding not established — see rejection code"}
         </dd>
       </dl>
       <p className="mt-4 text-[13px] leading-snug text-graphite">{tee.summary}</p>
-      {tee.provenanceMode === "DETERMINISTIC_FIXTURE" ? (
+      {tee.provenanceMode === "DETERMINISTIC_SIGNED_FIXTURE" ? (
         <p className="note-caution mt-4">
           Fixture data, not a live NEAR AI Cloud attestation. The checks above ran against a deterministic sample
           envelope.
@@ -1124,9 +1134,9 @@ function DrawerBody({ run, onRun }: { run: VerifyRun; onRun: () => void }): Reac
         <div className="space-y-4 text-[14px] leading-relaxed text-graphite">
           <p>
             This calls the same <code className="font-mono text-[13px] text-ink">runJudgeVerificationSuite()</code> as{" "}
-            <code className="font-mono text-[13px] text-ink">npm run verify:judge</code>: it scans the Rust contract
-            source, runs 200 seeded fast-check sequences against P1–P4, replays the shrunken split-brain trace, checks
-            the TEE envelope and asks 1Click for a dry-run quote.
+            <code className="font-mono text-[13px] text-ink">npm run verify:judge</code>: it queries the deployed Testnet account,
+            code and contract views, runs 200 seeded fast-check sequences against P1–P4, replays the shrunken split-brain trace, checks
+            a cryptographically signed offline envelope and asks 1Click for a dry-run quote.
           </p>
           <button
             type="button"
@@ -1186,7 +1196,7 @@ function ReportSection({
 }
 
 function ReportBody({ report }: { report: JudgeVerificationReport }): ReactElement {
-  const { rustContractCheck: rust, pbtSuite, counterexampleReplay: replay, teeAttestationCheck: tee } = report;
+  const { liveTestnetCheck: live, pbtSuite, counterexampleReplay: replay, teeAttestationCheck: tee } = report;
   const quote = report.oneClickQuotePreview;
   const amountOut = describeAmount(quote.destinationAsset, quote.estimatedAmountOut);
   return (
@@ -1205,16 +1215,13 @@ function ReportBody({ report }: { report: JudgeVerificationReport }): ReactEleme
           PBT counts are seeded and match the CLI
         </p>
       </div>
-      <ReportSection letter="A" title="Rust contract source" passed={rust.passed}>
-        <p className="font-mono text-[12px] text-graphite">{rust.contractPath}</p>
-        <ul className="mt-2 grid gap-x-4 gap-y-1 font-mono text-[12px] sm:grid-cols-2">
-          {rust.verifiedPrimitives.map((primitive) => (
-            <li key={primitive} className="flex items-center gap-2">
-              <span className="mark" data-kind="accepted" aria-hidden />
-              {primitive}
-            </li>
-          ))}
-        </ul>
+      <ReportSection letter="A" title="Live NEAR Testnet contract" passed={live.passed}>
+        <p>{live.provenanceMode} · block {live.blockHeight ?? "unavailable"}</p>
+        <a className="break-all underline" href={live.explorerUrl}>{live.accountId}</a>
+        <p className="break-all font-mono text-xs">Code: {live.codeHash ?? "unavailable"}</p>
+        <p>{live.rpcUrl}{live.endpointWarning ? ` · ${live.endpointWarning}` : ""}</p>
+        <p>Demonstrated job epoch: {String(live.job?.current_epoch ?? "unavailable")}</p>
+        {live.error ? <p>{live.error}</p> : null}
       </ReportSection>
       <ReportSection letter="B" title="fast-check P1–P4" passed={pbtSuite.passed}>
         <p>
@@ -1245,7 +1252,7 @@ function ReportBody({ report }: { report: JudgeVerificationReport }): ReactEleme
           </dd>
         </dl>
       </ReportSection>
-      <ReportSection letter="D" title="NEAR AI Cloud TEE" passed={tee.verified}>
+      <ReportSection letter="D" title="Signed offline fixture" passed={tee.verified}>
         <p className="flex flex-wrap gap-2">
           <ProvenanceBadge mode={tee.provenanceMode} />
         </p>
@@ -1302,7 +1309,7 @@ function TrustFooter(): ReactElement {
       <div className="mt-4 grid gap-6 text-[13.5px] leading-relaxed text-graphite md:grid-cols-3">
         <p>
           <span className="font-semibold text-ink">TEE provenance.</span> Every attestation panel prints its
-          provenanceMode. DETERMINISTIC_FIXTURE means a sample envelope, not a live enclave call.
+          provenanceMode. DETERMINISTIC_SIGNED_FIXTURE means a sample envelope, not a live enclave call.
         </p>
         <p>
           <span className="font-semibold text-ink">1Click settlement.</span> Quotes are requested with dry: true and

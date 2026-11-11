@@ -73,8 +73,8 @@ export const PRIMITIVES = [
   },
   {
     index: "03",
-    name: "NEAR AI Cloud TEE attestation",
-    body: "A verdict counts only when one 64-hex nonce is bound into Intel TDX report_data and NVIDIA NRAS eat_nonce.",
+    name: "Signed offline verifier fixture",
+    body: "secp256k1 signature recovery binds the lease and nonce to a pinned fixture signer. Hardware attestation is not connected.",
   },
   {
     index: "04",
@@ -252,7 +252,7 @@ function isJudgeReport(value: unknown): value is JudgeVerificationReport {
   return (
     isRecord(value) &&
     (value.verdict === "PASS" || value.verdict === "FAIL") &&
-    isRecord(value.rustContractCheck) &&
+    isRecord(value.liveTestnetCheck) &&
     isRecord(value.pbtSuite) &&
     isRecord(value.counterexampleReplay) &&
     isRecord(value.teeAttestationCheck) &&
