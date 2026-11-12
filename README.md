@@ -7,10 +7,10 @@ Built for **NEAR Hackathon 2026** (`https://nearhackathon.com/`).
 - **Live Interactive Workbench**: [https://near-ghost-shift.vercel.app](https://near-ghost-shift.vercel.app)
 - **Public GitHub Repository**: [https://github.com/GGGODLIN/near-ghost-shift](https://github.com/GGGODLIN/near-ghost-shift)
 - **X (Twitter) Demo Post**: [https://x.com/GGGODLIN/status/2119075686073979332](https://x.com/GGGODLIN/status/2119075686073979332)
-- **Tracks**: `security` (AI Security & Defense), `swarms` (AI Swarms), `agents` (Agent Economy), `business` (Autonomous Business), `open` (Open Innovation), `privacy` (Privacy & Private AI)
+- **Tracks**: `security` (AI Security & Defense), `swarms` (AI Swarms), `agents` (Agent Economy), `business` (Autonomous Business), `open` (Open Innovation)
 
 > **Independent Submission Disclosure (`Q-015`)**: Per NEAR Hackathon Rule `Q-015` (*"Allowed if projects are independent and disclosed: each README names the other project"*), this participant submitted two completely independent entries with zero overlapping tracks and zero shared domain logic:
-> 1. **GhostShift** (this repository) — Monotonic Epoch Fencing & Yield-Resume Handoff Gate (`tracks`: `security`, `swarms`, `agents`, `business`, `open`, `privacy`).
+> 1. **GhostShift** (this repository) — Monotonic Epoch Fencing & Yield-Resume Handoff Gate (`tracks`: `security`, `swarms`, `agents`, `business`, `open`).
 > 2. **[Afterlight](https://github.com/GGGODLIN/near-afterlight)** ([Live Demo](https://near-afterlight.vercel.app)) — Orbital Station Power-Grid & Dynamic `NEP-171` Equipment NFT Survival Game (`tracks`: `games`, `nfts`).
 
 https://github.com/user-attachments/assets/b7fae241-3a73-4ec9-8710-123b5c0832e1
